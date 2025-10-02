@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fitness Tracker</title>
+    <!-- Using Pico.css for a clean, modern look -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <style>
+        body {
+            padding: 2rem;
+            max-width: 900px;
+            margin: auto;
+        }
+        h1, h2 {
+            text-align: center;
+            color: var(--pico-h2-color);
+        }
+        .chart-container {
+            margin-top: 3rem;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background-color: var(--pico-card-background-color);
+            border-radius: var(--pico-card-border-radius);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        article {
+            margin-bottom: 1.5rem;
+        }
+        .workout-list article {
+             background-color: #28313b;
+        }
+        .workout-list header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .workout-list time {
+            font-size: 0.9em;
+            color: var(--pico-secondary);
+        }
+        .actions {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .actions a, .actions button {
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            border-radius: var(--pico-border-radius);
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .edit-btn { background-color: #546e7a; }
+        .delete-btn { background-color: #c62828; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>My Fitness Tracker</h1>
+            <p style="text-align: center;">Conveniently log your workouts and see your progress.</p>
+        </header>
+
+        <!-- Workout Entry Form -->
+        <article>
+            <h2 style="text-align:left; font-size: 1.5rem;">Log a New Workout</h2>
+            <form action="/add" method="POST">
+                <div class="grid">
+                    <input type="text" id="exercise_name" name="exercise_name" placeholder="Exercise Name (e.g., Push-ups)" required>
+                    <input type="number" id="sets" name="sets" placeholder="Sets (optional, defaults to 1)" min="1">
+                    <input type="number" id="reps" name="reps" placeholder="Reps per Set" required min="1">
+                </div>
+                <button type="submit">Add Workout</button>
+            </form>
+        </article>
+
+        <!-- This container will now hold our single, combined chart -->
+        <div id="charts-area">
+            <h2 style="margin-top: 3rem;">Progress Chart</h2>
+            <!-- A single chart will be generated here by JavaScript -->
+        </div>
+
+        <!-- Recent Workouts List -->
+        <div class="workout-list">
+            <h2 style="margin-top: 3rem;">Recent Entries</h2>
+            {% if workouts %}
+                {% for workout in workouts %}
+                <article>
+                    <header>
+                        <strong>{{ workout.exercise_name }}</strong>
+                        <time>{{ workout.timestamp.strftime('%Y-%m-%d %H:%M') }}</time>
+                    </header>
+                    <p><strong>Sets:</strong> {{ workout.sets }} | <strong>Reps:</strong> {{ workout.reps }} | <strong>Total Reps:</strong> {{ workout.sets * workout.reps }}</p>
+                    <div class="actions">
+                        <a href="{{ url_for('edit_workout', workout_id=workout.id) }}" class="edit-btn">Edit</a>
+                        <a href="{{ url_for('delete_workout', workout_id=workout.id) }}" class="delete-btn" onclick="return confirm('Are you sure you want to delete this entry?');">Delete</a>
+                    </div>
+                </article>
+                {% endfor %}
+            {% else %}
+                <p>No workouts logged yet. Add one above to get started!</p>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chartsArea = document.getElementById('charts-area');
+
+            // Fetch data from a relative URL so it works on both localhost and ngrok
+            fetch('/stats/grouped_by_date')
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(chartData => {
+                    // Clear the area and add the main title
+                    chartsArea.innerHTML = '<h2>Progress Chart</h2>';
+
+                    // Check if there are any labels or datasets to display
+                    if (!chartData.labels || chartData.labels.length === 0) {
+                        chartsArea.innerHTML += '<p>No workout data yet to display charts.</p>';
+                        return;
+                    }
+
+                    // Create a single container for the combined chart
+                    const chartContainer = document.createElement('div');
+                    chartContainer.className = 'chart-container';
+
+                    const chartTitle = document.createElement('h3');
+                    chartTitle.textContent = 'Daily Volume by Exercise (Total Reps)';
+                    chartTitle.style.textAlign = 'center';
+
+                    const canvas = document.createElement('canvas');
+                    canvas.id = 'combined-exercise-chart';
+
+                    chartContainer.appendChild(chartTitle);
+                    chartContainer.appendChild(canvas);
+                    chartsArea.appendChild(chartContainer);
+
+                    // Create the combined bar chart
+                    new Chart(canvas.getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: chartData.labels,
+                            // The backend now provides the datasets array structured perfectly for a grouped chart
+                            datasets: chartData.datasets 
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { color: '#ccc' },
+                                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                                },
+                                x: {
+                                    ticks: { color: '#ccc' },
+                                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                                }
+                            },
+                            plugins: {
+                                legend: { 
+                                    labels: { color: '#ccc' } 
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching stats:', error);
+                    chartsArea.innerHTML += '<p>Could not load chart data.</p>';
+                });
+        });
+    </script>
+</body>
+</html>
+

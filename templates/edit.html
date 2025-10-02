@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Workout</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <style>
+        body {
+            padding: 2rem;
+            max-width: 900px;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+        }
+        .actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <h1>Edit Workout Entry</h1>
+
+        <article>
+            <!-- The form action points to the update route with the specific workout ID -->
+            <form action="{{ url_for('update_workout', workout_id=workout.id) }}" method="POST">
+                <label for="exercise_name">Exercise Name</label>
+                <input type="text" id="exercise_name" name="exercise_name" value="{{ workout.exercise_name }}" required>
+
+                <div class="grid">
+                    <div>
+                        <label for="sets">Sets</label>
+                        <input type="number" id="sets" name="sets" value="{{ workout.sets }}" min="1">
+                    </div>
+                    <div>
+                        <label for="reps">Reps per Set</label>
+                        <input type="number" id="reps" name="reps" value="{{ workout.reps }}" required min="1">
+                    </div>
+                </div>
+                
+                <div class="actions">
+                    <button type="submit">Save Changes</button>
+                    <!-- Cancel link to go back to the main page -->
+                    <a href="{{ url_for('index') }}" role="button" class="secondary">Cancel</a>
+                </div>
+            </form>
+        </article>
+    </main>
+</body>
+</html>
+
