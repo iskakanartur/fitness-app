@@ -5,6 +5,7 @@ from collections import defaultdict
 import os
 from datetime import datetime, date
 from dotenv import load_dotenv
+import pytz # Import the new library
 
 # Load environment variables from .env file for local development
 load_dotenv()
@@ -24,6 +25,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+
+# --- Timezone Configuration ---
+# Define the target timezone for Armenia
+YEREVAN_TZ = pytz.timezone('Asia/Yerevan')
 
 
 # --- Database Models ---
@@ -74,8 +79,13 @@ def format_timedelta(td):
 def index():
     # --- Workout Data ---
     all_workouts = Workout.query.order_by(Workout.timestamp.desc()).all()
+    # Convert timestamps to local Armenian time for display
+    for workout in all_workouts:
+        workout.timestamp = workout.timestamp.replace(tzinfo=pytz.utc).astimezone(YEREVAN_TZ)
+
     today = date.today()
-    todays_workouts = Workout.query.filter(cast(Workout.timestamp, Date) == today).all()
+    todays_workouts = [w for w in all_workouts if w.timestamp.date() == today]
+    
     workout_summary = defaultdict(int)
     for workout in todays_workouts:
         workout_summary[workout.exercise_name] += workout.reps
@@ -84,8 +94,11 @@ def index():
     chart_data = list(workout_summary.values())
 
     # --- Meal Data ---
-    # Query meals in ascending order to calculate time difference
     meals_asc = Meal.query.order_by(Meal.timestamp.asc()).all()
+    # Convert meal timestamps to local Armenian time *before* calculating differences
+    for meal in meals_asc:
+        meal.timestamp = meal.timestamp.replace(tzinfo=pytz.utc).astimezone(YEREVAN_TZ)
+
     meals_with_fasting_time = []
     for i, meal in enumerate(meals_asc):
         fasted_time = None
@@ -93,13 +106,11 @@ def index():
             time_diff = meal.timestamp - meals_asc[i-1].timestamp
             fasted_time = format_timedelta(time_diff)
         
-        # We build a dictionary to pass to the template
         meals_with_fasting_time.append({
             'meal': meal,
             'fasted_time': fasted_time
         })
     
-    # Reverse the list for chronological display on the page
     meals_with_fasting_time.reverse()
 
     return render_template(
