@@ -1,6 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func, cast, Date
+from sqlalchemy import cast, Date
 from collections import defaultdict
 import os
 from datetime import datetime, date
@@ -26,12 +26,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 
-# --- Database Model ---
+# --- Simplified Database Model (No Sets) ---
 class Workout(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     exercise_name = db.Column(db.String(100), nullable=False)
-    sets = db.Column(db.Integer, nullable=False, default=1)
-    reps = db.Column(db.Integer, nullable=False)
+    reps = db.Column(db.Integer, nullable=False) # Total reps for this entry
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     def __repr__(self):
@@ -47,25 +46,22 @@ with app.app_context():
 @app.route('/')
 def index():
     """Main page, displays workouts and daily summary."""
-    # Fetch all workouts, ordered by most recent
     all_workouts = Workout.query.order_by(Workout.timestamp.desc()).all()
 
     # --- Calculate Today's Stats for Chart and Table ---
     today = date.today()
-    # Filter workouts created today
     todays_workouts = Workout.query.filter(
         cast(Workout.timestamp, Date) == today
     ).all()
 
-    # Process data for the summary table and chart
-    daily_summary = defaultdict(lambda: {'sets': 0, 'reps': 0})
+    # Simplified summary just tallies reps
+    daily_summary = defaultdict(int)
     for workout in todays_workouts:
-        daily_summary[workout.exercise_name]['sets'] += workout.sets
-        daily_summary[workout.exercise_name]['reps'] += workout.reps
+        daily_summary[workout.exercise_name] += workout.reps
 
     # Prepare data for Chart.js
     chart_labels = list(daily_summary.keys())
-    chart_data = [info['reps'] for info in daily_summary.values()]
+    chart_data = list(daily_summary.values())
     
     # Sort summary for consistent table display
     sorted_summary = sorted(daily_summary.items(), key=lambda item: item[0])
@@ -83,12 +79,10 @@ def index():
 def add_workout():
     """Handles adding a new workout entry."""
     exercise_name = request.form.get('exercise_name')
-    sets_str = request.form.get('sets')
-    sets = int(sets_str) if sets_str and sets_str.isdigit() else 1
     reps = int(request.form.get('reps'))
 
-    if exercise_name and reps: # Basic validation
-        new_workout = Workout(exercise_name=exercise_name, sets=sets, reps=reps)
+    if exercise_name and reps:
+        new_workout = Workout(exercise_name=exercise_name, reps=reps)
         db.session.add(new_workout)
         db.session.commit()
     return redirect(url_for('index'))
@@ -109,8 +103,6 @@ def update_workout(workout_id):
     workout = db.session.get(Workout, workout_id)
     if workout:
         workout.exercise_name = request.form.get('exercise_name')
-        sets_str = request.form.get('sets')
-        workout.sets = int(sets_str) if sets_str and sets_str.isdigit() else 1
         workout.reps = int(request.form.get('reps'))
         db.session.commit()
     return redirect(url_for('index'))

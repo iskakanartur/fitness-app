@@ -77,18 +77,14 @@
                 <section class="card">
                     <h2 class="text-2xl font-semibold text-white mb-4">Log a New Workout</h2>
                     <form action="{{ url_for('add_workout') }}" method="post" class="space-y-4">
-                        <div>
-                            <label for="exercise_name" class="block text-sm font-medium mb-1">Exercise Name</label>
-                            <input type="text" id="exercise_name" name="exercise_name" class="w-full form-input p-2" placeholder="e.g., Push-ups" required>
-                        </div>
                         <div class="grid grid-cols-2 gap-4">
                              <div>
-                                <label for="sets" class="block text-sm font-medium mb-1">Sets</label>
-                                <input type="number" id="sets" name="sets" class="w-full form-input p-2" placeholder="1" min="1">
+                                <label for="exercise_name" class="block text-sm font-medium mb-1">Exercise Name</label>
+                                <input type="text" id="exercise_name" name="exercise_name" class="w-full form-input p-2" placeholder="e.g., Push-ups" required>
                             </div>
                             <div>
-                                <label for="reps" class="block text-sm font-medium mb-1">Reps per Set</label>
-                                <input type="number" id="reps" name="reps" class="w-full form-input p-2" placeholder="e.g., 12" required min="1">
+                                <label for="reps" class="block text-sm font-medium mb-1">Total Reps</label>
+                                <input type="number" id="reps" name="reps" class="w-full form-input p-2" placeholder="e.g., 50" required min="1">
                             </div>
                         </div>
                         <button type="submit" class="w-full btn btn-primary">Add Workout</button>
@@ -113,9 +109,7 @@
                             </div>
                             <div class="mt-4 border-t border-gray-700 pt-2">
                                 <p class="text-gray-300">
-                                    <span class="font-semibold">{{ workout.sets }}</span> sets x 
-                                    <span class="font-semibold">{{ workout.reps }}</span> reps | 
-                                    Total Volume: <span class="font-semibold">{{ workout.sets * workout.reps }}</span> reps
+                                    Total Reps: <span class="font-semibold">{{ workout.reps }}</span>
                                 </p>
                             </div>
                         </div>
@@ -146,22 +140,18 @@
                             <thead class="border-b border-gray-600 text-gray-300">
                                 <tr>
                                     <th scope="col" class="py-2 px-4">Exercise</th>
-                                    <th scope="col" class="py-2 px-4">Total Sets</th>
                                     <th scope="col" class="py-2 px-4">Total Reps</th>
-                                    <th scope="col" class="py-2 px-4">Total Volume</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for exercise, data in sorted_summary %}
+                                {% for exercise, total_reps in sorted_summary %}
                                 <tr class="border-b border-gray-700">
                                     <td class="py-3 px-4 font-medium text-white">{{ exercise }}</td>
-                                    <td class="py-3 px-4">{{ data.sets }}</td>
-                                    <td class="py-3 px-4">{{ data.reps }}</td>
-                                    <td class="py-3 px-4 font-semibold text-white">{{ data.sets * data.reps }}</td>
+                                    <td class="py-3 px-4 font-semibold text-white">{{ total_reps }}</td>
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="4" class="text-center py-4 text-gray-400">No workouts logged for today.</td>
+                                    <td colspan="2" class="text-center py-4 text-gray-400">No workouts logged for today.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -176,11 +166,9 @@
         document.addEventListener('DOMContentLoaded', function () {
             const ctx = document.getElementById('dailyChart').getContext('2d');
             
-            // Data passed from Flask/Jinja2
             const chartLabels = {{ chart_labels|tojson }};
             const chartData = {{ chart_data|tojson }};
 
-            // Don't render the chart if there is no data
             if (chartLabels.length > 0) {
                 new Chart(ctx, {
                     type: 'bar',
@@ -193,7 +181,7 @@
                             borderColor: 'rgba(59, 130, 246, 1)',
                             borderWidth: 1,
                             borderRadius: 4,
-                            maxBarThickness: 60 // Keeps bars from getting too wide
+                            maxBarThickness: 60
                         }]
                     },
                     options: {
@@ -202,39 +190,26 @@
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                ticks: {
-                                    color: '#9ca3af'
-                                },
-                                grid: {
-                                    color: 'rgba(75, 85, 99, 0.5)'
-                                }
+                                ticks: { color: '#9ca3af' },
+                                grid: { color: 'rgba(75, 85, 99, 0.5)' }
                             },
                             x: {
-                                ticks: {
-                                    color: '#9ca3af'
-                                },
-                                grid: {
-                                    display: false
-                                }
+                                ticks: { color: '#9ca3af' },
+                                grid: { display: false }
                             }
                         },
                         plugins: {
-                            legend: {
-                                display: false // Simpler chart, the label is enough
-                            },
+                            legend: { display: false },
                             title: {
                                 display: true,
                                 text: 'Total Reps by Exercise for Today',
                                 color: '#d1d5db',
-                                font: {
-                                    size: 16
-                                }
+                                font: { size: 16 }
                             }
                         }
                     }
                 });
             } else {
-                // If no data, display a message in the canvas area
                 const canvas = document.getElementById('dailyChart');
                 const context = canvas.getContext('2d');
                 canvas.parentElement.style.display = 'flex';

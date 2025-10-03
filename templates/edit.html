@@ -1,55 +1,75 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Workout</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-            padding: 2rem;
-            max-width: 900px;
-            margin: auto;
+            font-family: 'Inter', sans-serif;
+            background-color: #111827;
+            color: #d1d5db;
         }
-        h1 {
-            text-align: center;
+        .card {
+            background-color: #1f2937;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         }
-        .actions {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1rem;
+        .form-input {
+            background-color: #374151;
+            border: 1px solid #4b5563;
+            color: #d1d5db;
+            border-radius: 0.5rem;
+        }
+        .btn {
+            border-radius: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        .btn-cancel {
+            background-color: #6b7280;
+            color: white;
+        }
+         .btn-cancel:hover {
+            background-color: #4b5563;
         }
     </style>
 </head>
-<body>
-    <main class="container">
-        <h1>Edit Workout Entry</h1>
-
-        <article>
-            <!-- The form action points to the update route with the specific workout ID -->
-            <form action="{{ url_for('update_workout', workout_id=workout.id) }}" method="POST">
-                <label for="exercise_name">Exercise Name</label>
-                <input type="text" id="exercise_name" name="exercise_name" value="{{ workout.exercise_name }}" required>
-
-                <div class="grid">
+<body class="flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-md">
+        <div class="card">
+            <h1 class="text-2xl font-bold text-white mb-6 text-center">Edit Workout</h1>
+            <form action="{{ url_for('update_workout', workout_id=workout.id) }}" method="post" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label for="sets">Sets</label>
-                        <input type="number" id="sets" name="sets" value="{{ workout.sets }}" min="1">
+                        <label for="exercise_name" class="block text-sm font-medium mb-1">Exercise Name</label>
+                        <input type="text" id="exercise_name" name="exercise_name" value="{{ workout.exercise_name }}" class="w-full form-input p-2" required>
                     </div>
                     <div>
-                        <label for="reps">Reps per Set</label>
-                        <input type="number" id="reps" name="reps" value="{{ workout.reps }}" required min="1">
+                        <label for="reps" class="block text-sm font-medium mb-1">Total Reps</label>
+                        <input type="number" id="reps" name="reps" value="{{ workout.reps }}" class="w-full form-input p-2" required min="1">
                     </div>
                 </div>
-                
-                <div class="actions">
-                    <button type="submit">Save Changes</button>
-                    <!-- Cancel link to go back to the main page -->
-                    <a href="{{ url_for('index') }}" role="button" class="secondary">Cancel</a>
+                <div class="flex space-x-4 pt-2">
+                    <a href="{{ url_for('index') }}" class="w-full text-center btn btn-cancel">Cancel</a>
+                    <button type="submit" class="w-full btn btn-primary">Save Changes</button>
                 </div>
             </form>
-        </article>
-    </main>
+        </div>
+    </div>
 </body>
 </html>
 
