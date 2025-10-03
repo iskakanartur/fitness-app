@@ -3,20 +3,21 @@ from flask_sqlalchemy import SQLAlchemy
 from collections import defaultdict
 import os
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env file for local development
+load_dotenv()
 
 # --- App & Database Configuration ---
 app = Flask(__name__)
 
 # This is the key change for deployment.
 # 1. It looks for a 'DATABASE_URL' environment variable (which Render will provide).
-# 2. If it can't find it, it falls back to your local database for development.
-DATABASE_URL = os.environ.get(
-    'DATABASE_URL', 
-    'postgresql://postgres:HayastaN77@localhost/fitness_tracker' # Your local password is safe here.
-)
+# 2. If it can't find it, it falls back to your local database from the .env file.
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
 # SQLAlchemy requires 'postgresql' but some services use 'postgres'. This line fixes that.
-if DATABASE_URL.startswith("postgres://"):
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
@@ -35,6 +36,11 @@ class Workout(db.Model):
 
     def __repr__(self):
         return f'<Workout {self.exercise_name}>'
+
+# --- THE FIX: Create database tables before any requests ---
+# This code now runs every time the app starts, whether locally or on Render.
+with app.app_context():
+    db.create_all()
 
 # --- Web Page Routes ---
 @app.route('/')
@@ -138,11 +144,8 @@ def stats_grouped_by_date():
     return jsonify(chart_data)
 
 
-# --- Main Entry Point ---
-# The db.create_all() call is safe to keep; it will only create tables if they don't already exist.
+# --- Main Entry Point (for local development only) ---
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    # Debug mode should be OFF for production, but Render will handle this.
+    # Debug mode should be OFF for production, but this block is now only for local use.
     app.run(debug=True)
 
