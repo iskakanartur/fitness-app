@@ -9,43 +9,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #111827;
-            color: #d1d5db;
-        }
-        .card {
-            background-color: #1f2937;
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-        }
-        .form-input {
-            background-color: #374151;
-            border: 1px solid #4b5563;
-            color: #d1d5db;
-            border-radius: 0.5rem;
-        }
-        .btn {
-            border-radius: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            font-weight: 600;
-            transition: background-color 0.2s;
-        }
-        .btn-primary {
-            background-color: #3b82f6;
-            color: white;
-        }
-        .btn-primary:hover {
-            background-color: #2563eb;
-        }
-        .btn-cancel {
-            background-color: #6b7280;
-            color: white;
-        }
-         .btn-cancel:hover {
-            background-color: #4b5563;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #111827; color: #d1d5db; }
+        .card { background-color: #1f2937; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+        .form-input { background-color: #374151; border: 1px solid #4b5563; color: #d1d5db; border-radius: 0.5rem; }
+        .btn { border-radius: 0.5rem; padding: 0.75rem 1.5rem; font-weight: 600; transition: background-color 0.2s; }
+        .btn-primary { background-color: #3b82f6; color: white; }
+        .btn-primary:hover { background-color: #2563eb; }
+        .btn-cancel { background-color: #6b7280; color: white; }
+        .btn-cancel:hover { background-color: #4b5563; }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen">
@@ -56,11 +27,11 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label for="exercise_name" class="block text-sm font-medium mb-1">Exercise Name</label>
-                        <input type="text" id="exercise_name" name="exercise_name" value="{{ workout.exercise_name }}" class="w-full form-input p-2" required>
+                        <input type="text" name="exercise_name" value="{{ workout.exercise_name }}" class="w-full form-input p-2" required>
                     </div>
                     <div>
                         <label for="reps" class="block text-sm font-medium mb-1">Total Reps</label>
-                        <input type="number" id="reps" name="reps" value="{{ workout.reps }}" class="w-full form-input p-2" required min="1">
+                        <input type="number" name="reps" value="{{ workout.reps }}" class="w-full form-input p-2" required min="1">
                     </div>
                 </div>
                 <div class="flex space-x-4 pt-2">
