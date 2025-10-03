@@ -1,8 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func, cast, Date
 from collections import defaultdict
 import os
-from datetime import datetime
+from datetime import datetime, date
 from dotenv import load_dotenv
 
 # Load environment variables from .env file for local development
@@ -11,24 +12,19 @@ load_dotenv()
 # --- App & Database Configuration ---
 app = Flask(__name__)
 
-# This is the key change for deployment.
-# It looks for a 'DATABASE_URL' environment variable (which Render will provide).
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
-# --- THE FIX: Add a defensive check for the database URL ---
-# This will make the app crash with a clear error if the secret is missing.
 if not DATABASE_URL:
     raise RuntimeError("FATAL: DATABASE_URL environment variable is not set.")
 
-# SQLAlchemy requires 'postgresql' but some services use 'postgres'. This line fixes that.
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize the database
 db = SQLAlchemy(app)
+
 
 # --- Database Model ---
 class Workout(db.Model):
@@ -41,17 +37,47 @@ class Workout(db.Model):
     def __repr__(self):
         return f'<Workout {self.exercise_name}>'
 
+
 # Create database tables before any requests.
-# This code now runs every time the app starts, whether locally or on Render.
 with app.app_context():
     db.create_all()
+
 
 # --- Web Page Routes ---
 @app.route('/')
 def index():
-    """Main page, displays all workouts."""
-    workouts = Workout.query.order_by(Workout.timestamp.desc()).all()
-    return render_template('index.html', workouts=workouts)
+    """Main page, displays workouts and daily summary."""
+    # Fetch all workouts, ordered by most recent
+    all_workouts = Workout.query.order_by(Workout.timestamp.desc()).all()
+
+    # --- Calculate Today's Stats for Chart and Table ---
+    today = date.today()
+    # Filter workouts created today
+    todays_workouts = Workout.query.filter(
+        cast(Workout.timestamp, Date) == today
+    ).all()
+
+    # Process data for the summary table and chart
+    daily_summary = defaultdict(lambda: {'sets': 0, 'reps': 0})
+    for workout in todays_workouts:
+        daily_summary[workout.exercise_name]['sets'] += workout.sets
+        daily_summary[workout.exercise_name]['reps'] += workout.reps
+
+    # Prepare data for Chart.js
+    chart_labels = list(daily_summary.keys())
+    chart_data = [info['reps'] for info in daily_summary.values()]
+    
+    # Sort summary for consistent table display
+    sorted_summary = sorted(daily_summary.items(), key=lambda item: item[0])
+
+    return render_template(
+        'index.html',
+        workouts=all_workouts,
+        sorted_summary=sorted_summary,
+        chart_labels=chart_labels,
+        chart_data=chart_data
+    )
+
 
 @app.route('/add', methods=['POST'])
 def add_workout():
@@ -61,10 +87,12 @@ def add_workout():
     sets = int(sets_str) if sets_str and sets_str.isdigit() else 1
     reps = int(request.form.get('reps'))
 
-    new_workout = Workout(exercise_name=exercise_name, sets=sets, reps=reps)
-    db.session.add(new_workout)
-    db.session.commit()
+    if exercise_name and reps: # Basic validation
+        new_workout = Workout(exercise_name=exercise_name, sets=sets, reps=reps)
+        db.session.add(new_workout)
+        db.session.commit()
     return redirect(url_for('index'))
+
 
 @app.route('/edit/<int:workout_id>')
 def edit_workout(workout_id):
@@ -73,6 +101,7 @@ def edit_workout(workout_id):
     if workout:
         return render_template('edit.html', workout=workout)
     return redirect(url_for('index'))
+
 
 @app.route('/update/<int:workout_id>', methods=['POST'])
 def update_workout(workout_id):
@@ -86,6 +115,7 @@ def update_workout(workout_id):
         db.session.commit()
     return redirect(url_for('index'))
 
+
 @app.route('/delete/<int:workout_id>')
 def delete_workout(workout_id):
     """Handles deleting a workout entry."""
@@ -95,61 +125,7 @@ def delete_workout(workout_id):
         db.session.commit()
     return redirect(url_for('index'))
 
-
-# --- API Endpoint for Stats ---
-@app.route('/stats/grouped_by_date')
-def stats_grouped_by_date():
-    """
-    Provides statistics grouped by date for a multi-bar chart.
-    """
-    workouts = Workout.query.order_by(Workout.timestamp).all()
-    
-    stats_agg = defaultdict(lambda: defaultdict(int))
-    all_dates = set()
-    
-    for workout in workouts:
-        date_str = workout.timestamp.strftime('%b %d')
-        all_dates.add(date_str)
-        total_reps = workout.sets * workout.reps
-        stats_agg[workout.exercise_name][date_str] += total_reps
-        
-    sorted_labels = sorted(list(all_dates))
-    
-    datasets = []
-    colors = [
-        {'bg': 'rgba(255, 99, 132, 0.6)', 'border': 'rgba(255, 99, 132, 1)'},
-        {'bg': 'rgba(54, 162, 235, 0.6)', 'border': 'rgba(54, 162, 235, 1)'},
-        {'bg': 'rgba(255, 206, 86, 0.6)', 'border': 'rgba(255, 206, 86, 1)'},
-        {'bg': 'rgba(75, 192, 192, 0.6)', 'border': 'rgba(75, 192, 192, 1)'},
-        {'bg': 'rgba(153, 102, 255, 0.6)', 'border': 'rgba(153, 102, 255, 1)'},
-        {'bg': 'rgba(255, 159, 64, 0.6)', 'border': 'rgba(255, 159, 64, 1)'}
-    ]
-    color_index = 0
-
-    for exercise_name, date_data in stats_agg.items():
-        data_points = [date_data.get(date_label, 0) for date_label in sorted_labels]
-        
-        color = colors[color_index % len(colors)]
-        
-        datasets.append({
-            'label': exercise_name,
-            'data': data_points,
-            'backgroundColor': color['bg'],
-            'borderColor': color['border'],
-            'borderWidth': 1
-        })
-        color_index += 1
-
-    chart_data = {
-        'labels': sorted_labels,
-        'datasets': datasets
-    }
-        
-    return jsonify(chart_data)
-
-
 # --- Main Entry Point (for local development only) ---
 if __name__ == '__main__':
-    # Debug mode should be OFF for production, but this block is now only for local use.
     app.run(debug=True)
 
