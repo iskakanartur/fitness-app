@@ -12,12 +12,16 @@ load_dotenv()
 app = Flask(__name__)
 
 # This is the key change for deployment.
-# 1. It looks for a 'DATABASE_URL' environment variable (which Render will provide).
-# 2. If it can't find it, it falls back to your local database from the .env file.
+# It looks for a 'DATABASE_URL' environment variable (which Render will provide).
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
+# --- THE FIX: Add a defensive check for the database URL ---
+# This will make the app crash with a clear error if the secret is missing.
+if not DATABASE_URL:
+    raise RuntimeError("FATAL: DATABASE_URL environment variable is not set.")
+
 # SQLAlchemy requires 'postgresql' but some services use 'postgres'. This line fixes that.
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
@@ -37,7 +41,7 @@ class Workout(db.Model):
     def __repr__(self):
         return f'<Workout {self.exercise_name}>'
 
-# --- THE FIX: Create database tables before any requests ---
+# Create database tables before any requests.
 # This code now runs every time the app starts, whether locally or on Render.
 with app.app_context():
     db.create_all()
